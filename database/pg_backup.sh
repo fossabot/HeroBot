@@ -1,5 +1,5 @@
 #!/bin/bash
- 
+
 ###########################
 ####### LOAD CONFIG #######
 ###########################
@@ -158,3 +158,5 @@ do
 done
  
 echo -e "\nAll database backups complete!"
+
+read -rsp $'Press enter to continue...\n'
