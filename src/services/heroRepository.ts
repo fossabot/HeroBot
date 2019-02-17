@@ -1,35 +1,46 @@
-import { BaseEntityService } from "./baseEntityService";
 import { Monster } from "../interfaces/monster";
 import { getTimeStampFormated } from "../utils/time";
-import { ProficienceType } from "../enums/proficienceType";
-import { Action, Task } from "../enums/action";
+import { Task } from "../enums/action";
 import { HeroDieError } from "../errors/heroDieError";
 import { randomNumber } from "../utils/random";
-import { JsonHandle } from "../utils/jsonHandle";
 import { Hero } from "../entity/hero";
 import { Proficience } from "../entity/proficience";
-import { PlayStatus } from "../entity/playStatus";
 import { IPlayStatus } from "../interfaces/playStatus";
+import { EntityRepository, Repository } from "typeorm";
 
 /** @internal */
-class HeroService extends BaseEntityService<Hero> {
-  createhero(hero: Hero): Promise<Hero> {
-    return super.save(hero);
+@EntityRepository(Hero)
+export class HeroRepository extends Repository<Hero> {
+  async createhero(hero: Hero): Promise<Hero> {
+    try {
+      return super.save(hero);
+    } catch (error) {
+      console.error(error);
+      return Promise.reject(error);
+    }
   }
 
-  findbyUserID(id: string): Promise<Hero> {
-    //return super.find(id);
-    return null;
-  }
-
-  remove(id: number): Promise<void> {
-    return super.deleteById(id);
+  async findbyId(id: string): Promise<Hero> {
+    return super.findOne(id);
   }
 
   updateHero(hero: Hero): Promise<Hero> {
     return super.save(hero);
   }
 
+  removeById(id: number): Promise<void> {
+    try {
+      super
+        .createQueryBuilder()
+        .delete()
+        .from(Hero)
+        .where("id = :id", { id: id })
+        .execute();
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject("Wasn't possible to delete Hero");
+    }
+  }
   /**
    * Calculate the total amount of damage that will be gived based in the damage value and bonus.
    * @param damage weapon
@@ -88,7 +99,7 @@ class HeroService extends BaseEntityService<Hero> {
   async attackMonster(hero: Hero, monster: Monster): Promise<void> {
     if (hero !== undefined && monster !== undefined) {
       const weapon = await hero.weapon;
-      const damageProficience = await hero.damageProficiente;
+      const damageProficience = await hero.damageProficience;
 
       monster.hp =
         monster.hp -
@@ -133,7 +144,7 @@ class HeroService extends BaseEntityService<Hero> {
     const heroStatus = await hero.playStatus;
 
     if (heroStatus.task === Task.DAMAGE_TRAINING) {
-      proficience = await hero.damageProficiente;
+      proficience = await hero.damageProficience;
     } else if (heroStatus.task === Task.SHIELD_TRAINING) {
       proficience = await hero.defenceProficience;
     } else {
@@ -174,7 +185,7 @@ class HeroService extends BaseEntityService<Hero> {
    * Set the adventureStarted time with undefined and calcs user training bounties
    * @throws heroDieError if the hero died in exploration
    */
-  finishHeroTraining(hero: Hero): Promise<IPlayStatus> {
+  async finishHeroTraining(hero: Hero): Promise<IPlayStatus> {
     return this.calcHeroTrainingBase(hero, true);
   }
 
@@ -204,7 +215,7 @@ class HeroService extends BaseEntityService<Hero> {
     const hits = Math.floor(time / hitConst);
 
     const damageToMonster = this.calcDamageTaken(
-      this.calcDamage(weapon.damage, (await hero.damageProficiente).level),
+      this.calcDamage(weapon.damage, (await hero.damageProficience).level),
       this.calcDefence(monster.defence)
     );
 
@@ -271,6 +282,3 @@ class HeroService extends BaseEntityService<Hero> {
     };
   }
 }
-
-const heroService = new HeroService();
-export default heroService;
